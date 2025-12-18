@@ -107,7 +107,7 @@
                     .replace(/\//g, '_')
                     .replace(/=/g, '');
                 
-                const shortUrl = GITHUB_PAGES_URL + '/redirect.html?' + encodedUrl;
+                const shortUrl = GITHUB_PAGES_URL + '/1.html?' + encodedUrl;
                 
                 displayResult(shortUrl);
                 saveToHistory(targetUrl, shortUrl);
@@ -160,7 +160,7 @@
                     display.style.background = '#d4edda';
                     display.style.borderColor = '#28a745';
                     
-                    alert('✅ 链接已成功复制到剪贴板！');
+                    alert(链接已成功复制到剪贴板！');
                     
                     setTimeout(() => {
                         display.style.background = originalBg;
@@ -179,7 +179,7 @@
         function fallbackCopyTextToClipboard(text) {
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(text).then(() => {
-                    alert('✅ 链接已成功复制到剪贴板！');
+                    alert(链接已成功复制到剪贴板！');
                 }).catch(() => {
                     promptManualCopy(text);
                 });
@@ -221,6 +221,7 @@
     </script>
 </body>
 </html>
+
 
 
 
