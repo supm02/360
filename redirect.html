@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex, nofollow">
+    <title>加载中...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        
+        body {
+            background: #676767;
+        }
+        
+        #contentFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+            transform: translateZ(0);
+            will-change: transform;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #676767;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        #errorContainer {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 50px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            z-index: 10000;
+        }
+        
+        #errorContainer.show {
+            display: block;
+        }
+        
+        .icon { 
+            font-size: 72px; 
+            margin-bottom: 20px; 
+        }
+        
+        h2 { 
+            color: #ff5722; 
+            margin-bottom: 15px; 
+            font-size: 26px;
+        }
+        
+        p { 
+            color: #666; 
+            line-height: 1.8; 
+            font-size: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .tips {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #676767;
+        }
+        
+        .tips p {
+            color: #999;
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .retry-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 30px;
+            background: linear-gradient(-225deg, #2CD8D5 0%, #C5C1FF 56%, #FFBAC3 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .retry-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">正在加载...</div>
+    </div>
+    
+    <div id="errorContainer">
+        <div class="icon">🔒</div>
+        <h2 id="errorTitle">链接错误</h2>
+        <p id="errorMessage">无法解析链接</p>
+        <div class="tips">
+            <p id="errorTips">💡 提示：请检查链接是否完整</p>
+        </div>
+        <button class="retry-btn" onclick="location.reload()">重新加载</button>
+    </div>
+    
+    <iframe id="contentFrame" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"></iframe>
+
+    <script>
+        function getEncodedUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            let encoded = urlParams.get('url') || urlParams.get('u') || urlParams.get('y');
+            if (!encoded) {
+                const queryString = window.location.search.substring(1);
+                if (queryString && !queryString.includes('=')) {
+                    encoded = queryString;
+                }
+            }
+            if (!encoded && window.location.hash) {
+                encoded = window.location.hash.substring(1);
+            }
+            return encoded;
+        }
+        
+        function decodeUrl(encoded) {
+            if (!encoded) return null;
+            try {
+                let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+                while (base64.length % 4) {
+                    base64 += '=';
+                }
+                const decoded = atob(base64);
+                try {
+                    return decodeURIComponent(decoded);
+                } catch (e) {
+                    return decoded;
+                }
+            } catch (e) {
+                console.error('解码错误:', e);
+                return null;
+            }
+        }
+        
+        function isValidUrl(string) {
+            if (!string) return false;
+            try {
+                const url = new URL(string);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch (_) {
+                return false;
+            }
+        }
+        
+        function showError(title, message, tips) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('errorTitle').textContent = title;
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorTips').textContent = tips || '💡 提示：请检查链接是否完整';
+            document.getElementById('errorContainer').classList.add('show');
+        }
+        
+        function loadTarget(targetUrl) {
+            const iframe = document.getElementById('contentFrame');
+            const loading = document.getElementById('loading');
+            iframe.src = targetUrl;
+            let loaded = false;
+            iframe.onload = function() {
+                loaded = true;
+                loading.style.display = 'none';
+                iframe.style.display = 'block';
+            };
+            iframe.onerror = function() {
+                loaded = true;
+                console.log('iframe加载失败，尝试直接跳转');
+                window.location.href = targetUrl;
+            };
+            setTimeout(function() {
+                if (!loaded) {
+                    loading.style.display = 'none';
+                    iframe.style.display = 'block';
+                    setTimeout(function() {
+                        if (!loaded) {
+                            const shouldRedirect = confirm('网站加载时间较长，是否直接跳转？');
+                            if (shouldRedirect) {
+                                window.location.href = targetUrl;
+                            }
+                        }
+                    }, 5000);
+                }
+            }, 2000);
+            checkIframeLoading(iframe, targetUrl);
+        }
+        
+        function checkIframeLoading(iframe, targetUrl) {
+            let checkCount = 0;
+            const checkInterval = setInterval(() => {
+                checkCount++;
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc && iframeDoc.body) {
+                        clearInterval(checkInterval);
+                    }
+                } catch (e) {
+                    if (e.name === 'SecurityError') {
+                        console.log('检测到X-Frame-Options限制，将直接跳转');
+                        clearInterval(checkInterval);
+                        setTimeout(() => {
+                            window.location.href = targetUrl;
+                        }, 1000);
+                    }
+                }
+                if (checkCount > 10) {
+                    clearInterval(checkInterval);
+                }
+            }, 500);
+        }
+        
+        function init() {
+            const encodedUrl = getEncodedUrl();
+            if (!encodedUrl) {
+                showError(
+                    '参数缺失',
+                    '链接中没有找到必要的参数',
+                    '💡 提示：请确保使用完整的防红链接'
+                );
+                return;
+            }
+            const targetUrl = decodeUrl(encodedUrl);
+            if (!targetUrl) {
+                showError(
+                    '解码失败',
+                    '无法解析链接，可能链接已损坏',
+                    '💡 提示：请重新生成防红链接'
+                );
+                return;
+            }
+            if (!isValidUrl(targetUrl)) {
+                showError(
+                    '链接无效',
+                    '目标链接格式不正确: ' + targetUrl,
+                    '💡 提示：仅支持 HTTP 和 HTTPS 协议'
+                );
+                return;
+            }
+            logVisit(targetUrl);
+            loadTarget(targetUrl);
+        }
+        
+        function logVisit(url) {
+            try {
+                let visits = JSON.parse(localStorage.getItem('visitHistory') || '[]');
+                visits.unshift({
+                    url: url,
+                    time: new Date().toISOString(),
+                    referrer: document.referrer
+                });
+                visits = visits.slice(0, 50);
+                localStorage.setItem('visitHistory', JSON.stringify(visits));
+            } catch (e) {
+            }
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+        
+        if (window.self !== window.top) {
+            try {
+                window.top.location = window.self.location;
+            } catch (e) {
+            }
+        }
+    </script>
+</body>
+</html>
+

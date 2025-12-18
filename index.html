@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>防红系统</title>
+    <link rel="shortcut icon" href="https://img.alicdn.com/imgextra/i3/2206746451653/O1CN01DGQwot1O57nUTbo0M_!!2206746451653.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .short-url-display{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+        *{margin:0;padding:0;box-sizing:border-box;font-family:MainFont,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+        :root{--primary-color:#C5C1FF;--hover-color:#C5C1FF;--text-color:#1a1a1a;--border-color:#e5e7eb;--background-color:#f0f0f0;}
+        @font-face{font-family:'MainFont';src:url('css/Font.woff2') format('woff2');font-weight:normal;font-style:normal;}
+        body{min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;color:var(--text-color);-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;}
+        .container{background:rgba(255,255,255,0.9);padding:40px;border-radius:24px;width:100%;max-width:500px;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.1);}
+        .form-header{text-align:center;margin-bottom:32px;}
+        .form-header i{font-size:56px;background:linear-gradient(-225deg,#2CD8D5 0%,#C5C1FF 56%,#FFBAC3 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:20px;display:inline-block;animation:float 3s ease-in-out infinite;}
+        @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+        .form-header h1{font-size:28px;color:var(--text-color);margin-bottom:8px;font-weight:600;}
+        .form-header .subtitle{font-size:14px;color:#999;margin-top:5px;}
+        .form-group{margin-bottom:24px;}
+        .form-group label{display:block;margin-bottom:10px;color:var(--text-color);font-weight:500;font-size:15px;}
+        .input-wrapper{position:relative;display:flex;align-items:center;}
+        .input-wrapper i{position:absolute;left:16px;color:#6b7280;font-size:18px;transition:all 0.3s ease;}
+        #selectArrow{position:absolute;right:16px;left:auto;color:#6b7280;font-size:14px;transition:transform 0.3s ease;pointer-events:none;}
+        select:focus~#selectArrow{transform:rotate(180deg);}
+        input[type="url"],select{width:100%;padding:16px 16px 16px 48px;border:2px solid var(--border-color);border-radius:16px;font-size:16px;transition:all 0.3s ease;background:#fafafa;appearance:none;cursor:pointer;}
+        input[type="url"]:focus,select:focus{border-color:var(--primary-color);outline:none;background:white;}
+        input[type="url"]:focus+i,select:focus+i{color:var(--primary-color);}
+        input[type="button"]{width:100%;padding:16px;background:linear-gradient(-225deg,#2CD8D5 0%,#C5C1FF 56%,#FFBAC3 100%);color:white;border:none;border-radius:16px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.3s ease;position:relative;overflow:hidden;}
+        input[type="button"]:hover{transform:translateY(-2px);box-shadow:0 5px 20px rgba(197,193,255,0.4);}
+        input[type="button"]:active{transform:translateY(0);}
+        input[type="button"]:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
+        #resultContainer{margin-top:20px;text-align:center;}
+        #shortUrlDisplay{padding:16px;background:#fafafa;border:2px solid var(--border-color);border-radius:16px;font-size:14px;color:#C5C1FF;cursor:pointer;transition:all 0.3s ease;word-break:break-all;}
+        #shortUrlDisplay:hover{border-color:#C5C1FF;background:#fff;}
+        .info-badge{display:inline-flex;align-items:center;background:#e7f3ff;color:#2196F3;padding:6px 12px;border-radius:20px;font-size:12px;margin-top:10px;}
+        .info-badge i{margin-right:5px;}
+        @media (max-width: 480px) {
+            .container{padding:30px 20px;}
+            .form-header i{font-size:48px;}
+            .form-header h1{font-size:24px;}
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-header">
+            <i class="fas fa-link"></i>
+            <h1>防红系统</h1>
+            <div class="subtitle">GitHub</div>
+        </div>
+        <form id="signup-form" onsubmit="return false;">
+            <div class="form-group">
+                <div class="input-wrapper">
+                    <input type="url" name="targetUrl" id="targetUrl" placeholder="需要生成的链接（支持 HTTP/HTTPS）" required>
+                    <i class="fas fa-link"></i>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="input-wrapper">
+                    <select name="type" id="type" required>
+                        <option value="redirect">防红跳转（推荐）</option>
+                        <option value="direct">直接跳转（快速）</option>
+                    </select>
+                    <i class="fas fa-cog"></i>
+                    <i class="fas fa-chevron-down" id="selectArrow"></i>
+                </div>
+            </div>
+            <input type="button" value="生成防红链接" id="generateButton" onclick="generateShortLink()" />
+        </form>
+        <div id="resultContainer"></div>
+        <div style="text-align:center;margin-top:20px;">
+            <div class="info-badge">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        const GITHUB_PAGES_URL = 'https://用户名.github.io/仓库名';
+        
+        function generateShortLink() {
+            const targetUrl = document.getElementById('targetUrl').value.trim();
+            const type = document.getElementById('type').value;
+            const generateButton = document.getElementById('generateButton');
+
+            if (!targetUrl) {
+                alert('请输入要生成的链接');
+                document.getElementById('targetUrl').focus();
+                return;
+            }
+
+            if (!isValidUrl(targetUrl)) {
+                alert('请输入有效的 HTTP 或 HTTPS 链接');
+                document.getElementById('targetUrl').focus();
+                return;
+            }
+
+            generateButton.value = "正在生成...";
+            generateButton.disabled = true;
+            document.getElementById('resultContainer').innerHTML = "";
+
+            try {
+                const encodedUrl = btoa(encodeURIComponent(targetUrl))
+                    .replace(/\+/g, '-')
+                    .replace(/\//g, '_')
+                    .replace(/=/g, '');
+                
+                const shortUrl = GITHUB_PAGES_URL + '/redirect.html?' + encodedUrl;
+                
+                displayResult(shortUrl);
+                saveToHistory(targetUrl, shortUrl);
+                
+            } catch (error) {
+                alert('生成失败：' + error.message);
+                console.error('生成错误:', error);
+            } finally {
+                setTimeout(() => {
+                    generateButton.value = "生成防红链接";
+                    generateButton.disabled = false;
+                }, 500);
+            }
+        }
+
+        function isValidUrl(string) {
+            try {
+                const url = new URL(string);
+                return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function displayResult(shortUrl) {
+            const resultHTML = `
+                <div id="shortUrlDisplay" onclick="copyShortLink('${shortUrl}')">
+                    ${shortUrl}
+                </div>
+                <div style="margin-top:10px;color:#666;font-size:13px;">
+                    <i class="fas fa-info-circle"></i> 点击链接复制到剪贴板
+                </div>
+            `;
+            document.getElementById('resultContainer').innerHTML = resultHTML;
+        }
+
+        function copyShortLink(url) {
+            const textarea = document.createElement('textarea');
+            textarea.value = url;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = 0;
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    const display = document.getElementById('shortUrlDisplay');
+                    const originalBg = display.style.background;
+                    display.style.background = '#d4edda';
+                    display.style.borderColor = '#28a745';
+                    
+                    alert('✅ 链接已成功复制到剪贴板！');
+                    
+                    setTimeout(() => {
+                        display.style.background = originalBg;
+                        display.style.borderColor = '';
+                    }, 1000);
+                } else {
+                    fallbackCopyTextToClipboard(url);
+                }
+            } catch (err) {
+                fallbackCopyTextToClipboard(url);
+            }
+            
+            document.body.removeChild(textarea);
+        }
+
+        function fallbackCopyTextToClipboard(text) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('✅ 链接已成功复制到剪贴板！');
+                }).catch(() => {
+                    promptManualCopy(text);
+                });
+            } else {
+                promptManualCopy(text);
+            }
+        }
+
+        function promptManualCopy(text) {
+            const result = prompt('请手动复制以下链接：', text);
+        }
+
+        function saveToHistory(originalUrl, shortUrl) {
+            try {
+                let history = JSON.parse(localStorage.getItem('linkHistory') || '[]');
+                history.unshift({
+                    original: originalUrl,
+                    short: shortUrl,
+                    time: new Date().toISOString()
+                });
+                history = history.slice(0, 20);
+                localStorage.setItem('linkHistory', JSON.stringify(history));
+            } catch (e) {
+                console.warn('无法保存历史记录:', e);
+            }
+        }
+
+        document.getElementById('targetUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateShortLink();
+            }
+        });
+
+        window.addEventListener('load', function() {
+            if (GITHUB_PAGES_URL.includes('你的用户名')) {
+                console.warn('⚠️ 请在 index.html 中配置 GITHUB_PAGES_URL');
+            }
+        });
+    </script>
+</body>
+</html>
+
